@@ -2,6 +2,10 @@
 
 **BIM 설계용역 입찰 의사결정을 위한 실물옵션 기반 가치평가 모델**
 
+> **버전 정보**
+> - GUI Application: v15 (CustomTkinter 기반)
+> - Valuation Engine: v14 (핵심 평가 로직)
+
 ## Overview
 
 본 모델은 건설 BIM 설계용역 입찰 시 전통적 NPV 분석의 한계를 극복하고, 실물옵션 이론을 적용하여 전략적 유연성 가치를 정량화하는 평가 시스템입니다.
