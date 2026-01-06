@@ -28,8 +28,8 @@ class Tier1Derivation:
     def derive(tier0: Tier0Input) -> Dict:
         """Tier 0에서 Tier 1 파생"""
 
-        # 1. 후속설계 존재 여부 (기본설계만 후속 있음)
-        has_follow_on = (tier0.design_phase == "기본설계")
+        # 1. 후속설계 존재 여부 (기본설계/Basic Design만 후속 있음)
+        has_follow_on = (tier0.design_phase in ["기본설계", "Basic Design"])
 
         # 2. 후속설계 규모 배수 범위
         if has_follow_on:
@@ -49,12 +49,19 @@ class Tier1Derivation:
             complexity_map = {'low': 'medium', 'medium': 'high', 'high': 'high'}
             complexity_base = complexity_map[complexity_base]
 
-        # 4. 경쟁 수준 분포 파라미터
-        competition_params = {
+        # 4. 경쟁 수준 분포 파라미터 (Korean + English support)
+        competition_params_map = {
+            # Korean
             '일반경쟁': {'dist': 'high_variance', 'mean': 0.6, 'std': 0.15},
             '제한경쟁': {'dist': 'medium_variance', 'mean': 0.4, 'std': 0.10},
             '지명경쟁': {'dist': 'low_variance', 'mean': 0.2, 'std': 0.05},
-        }.get(tier0.procurement_type, {'dist': 'medium_variance', 'mean': 0.4, 'std': 0.10})
+            # English
+            'Open': {'dist': 'high_variance', 'mean': 0.6, 'std': 0.15},
+            'Limited': {'dist': 'medium_variance', 'mean': 0.4, 'std': 0.10},
+            'Negotiated': {'dist': 'low_variance', 'mean': 0.2, 'std': 0.05},
+        }
+        competition_params = competition_params_map.get(
+            tier0.procurement_type, {'dist': 'medium_variance', 'mean': 0.4, 'std': 0.10})
 
         # 5. 마일스톤 수 (인프라 유형별)
         n_milestones = {
@@ -64,19 +71,25 @@ class Tier1Derivation:
         }.get(tier0.infra_type, 3)
 
         # 6. 후속 확률 Beta 분포 파라미터 (설계 단계별)
-        if tier0.design_phase == "기본설계":
+        if tier0.design_phase in ["기본설계", "Basic Design"]:
             # 기본설계: 후속 확률 높음 (Beta 분포 오른쪽 치우침)
             follow_on_beta_params = (4, 2)  # mean ≈ 0.67
         else:
             # 실시설계: 후속 확률 낮음 (감리 참여 정도)
             follow_on_beta_params = (1.5, 4)  # mean ≈ 0.27
 
-        # 7. 발주처 신뢰도 (Tier 2 샘플링에 영향)
-        client_reliability = {
+        # 7. 발주처 신뢰도 (Tier 2 샘플링에 영향) - Korean + English support
+        client_reliability_map = {
+            # Korean
             '중앙': 0.9,    # 국토부 등 - 안정적
             '공기업': 0.8,  # 한국도로공사 등 - 안정적
             '지방': 0.6,    # 지자체 - 변동성 있음
-        }.get(tier0.client_type, 0.7)
+            # English
+            'Central': 0.9,
+            'Public Corp': 0.8,
+            'Local': 0.6,
+        }
+        client_reliability = client_reliability_map.get(tier0.client_type, 0.7)
 
         return {
             'has_follow_on': has_follow_on,
@@ -154,8 +167,8 @@ class Tier2Sampler:
         competition_penalty = competition * 0.15  # 최대 +0.15
         adjusted_mode = base_mode + competition_penalty
 
-        # 실시설계는 단순 작업으로 경쟁 더 심화
-        if '실시' in design_phase:
+        # 실시설계/Detailed Design는 단순 작업으로 경쟁 더 심화
+        if '실시' in design_phase or 'Detailed' in design_phase:
             adjusted_mode += 0.05
 
         # 삼각분포 파라미터 설정

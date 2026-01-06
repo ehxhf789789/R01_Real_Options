@@ -95,33 +95,28 @@ NPV 기반 의사결정과 TPV 기반 의사결정이 다른 경우를 탐지:
 ## Project Structure
 
 ```
-Github/
-├── README.md                 # 본 문서
-├── requirements.txt          # Python 의존성
-├── dist/
-│   └── BIM_ROV_System_v15.exe    # 포터블 실행파일
+01_Real_Options/
+├── README.md                         # 본 문서
+├── requirements.txt                  # Python 의존성
+├── DEVELOPMENT_LOG.md               # 개발 기록
 ├── src/
-│   ├── valuation_engine_v14.py   # 핵심 평가 엔진
-│   ├── tier_system.py            # 3-Tier 입력 시스템
-│   └── generate_chapter4_figures.py  # 시각화 코드
-├── figures/
-│   ├── Figure_4-1_NPV_TPV_Comparison.png
-│   ├── Figure_4-2_ROV_Decomposition.png
-│   └── Figure_4-3_Sensitivity_Tornado.png
-└── data/
-    └── realistic_projects_10.csv  # 샘플 프로젝트 데이터
+│   ├── valuation_engine_v14.py      # 핵심 평가 엔진
+│   ├── tier_system.py               # 3-Tier 입력 시스템
+│   ├── main_app_v15_en.py           # GUI 메인 애플리케이션 (영문)
+│   ├── gui_app_english.py           # GUI 컴포넌트 (영문)
+│   ├── model_dashboard.py           # 대시보드 생성기
+│   ├── generate_chapter4_figures.py # 논문 Figure 생성
+│   └── generate_figures_v2.py       # Figure 생성 v2
+├── figures/                          # 생성된 시각화 결과
+├── docs/                             # 문서 (HTML 대시보드 등)
+├── data/
+│   └── realistic_projects_10.csv    # 샘플 프로젝트 데이터
+└── build/                            # PyInstaller 빌드 파일
 ```
 
 ## Quick Start
 
-### Option 1: 포터블 실행파일 (권장)
-
-1. `dist/BIM_ROV_System_v15.exe` 실행
-2. CSV 파일 로드 (예: `data/realistic_projects_10.csv`)
-3. 평가 실행 버튼 클릭
-4. 결과 확인 및 내보내기
-
-### Option 2: Python 스크립트
+### Python 스크립트
 
 ```python
 import pandas as pd
