@@ -31,15 +31,10 @@ Where:
 
 ### Theory & Concepts
 - [Real Options Theory](Real-Options-Theory) - Understanding the 7 real options and 3 adjustments
-- [5-Level Hierarchical System](3-Tier-System) - How the input transformation hierarchy works
+- [5-Level Hierarchical System](5-Level-System) - How the input transformation hierarchy works
 
 ### Technical Documentation
 - [Model Architecture](Model-Architecture) - Detailed system structure and calculation flow
-- [API Reference](API-Reference) - Function and class documentation
-
-### User Guides
-- [Installation Guide](Installation-Guide) - Setting up the environment
-- [Usage Examples](Usage-Examples) - Practical examples with sample data
 
 ---
 
@@ -78,15 +73,31 @@ Where:
 
 ## Key Parameters (Literature-Based)
 
-### Infrastructure Type Parameters
+### Infrastructure Type Parameters (Flyvbjerg et al. 2003)
 
 | Parameter | Road | Bridge | Tunnel | Source |
 |-----------|------|--------|--------|--------|
-| Base Complexity (κ₀) | 0.60 | 0.85 | 1.00 | Flyvbjerg (2003) |
-| Design Flexibility (f_scope) | 1.00 | 0.65 | 0.48 | Flyvbjerg (2003) |
-| Base Volatility (σ₀) | 0.22 | 0.35 | 0.42 | Flyvbjerg (2003) |
+| Base Complexity (κ₀) | 0.60 | 0.85 | 1.00 | Cost overrun normalization |
+| Design Flexibility (f_scope) | 1.00 | 0.65 | 0.48 | Eq.(4) |
+| Base Volatility (σ₀) | 0.22 | 0.35 | 0.42 | Eq.(5) |
 | Design Reviews (n) | 3 | 4 | 4 | MOLIT (2024) |
 | Value Multiplier (m_f) | 1.67 | 1.84 | 1.84 | MOTIE (2024) |
+
+### Competition Parameters (KENCA 2023)
+
+| Procurement Type | Mean (μ_c) | Std (σ_c) |
+|------------------|------------|-----------|
+| Open | 0.72 | 0.14 |
+| Limited | 0.48 | 0.10 |
+| Nominated | 0.21 | 0.04 |
+
+### Client Reliability (KENCA 2023)
+
+| Client Type | Reliability (φ_c) |
+|-------------|-------------------|
+| Central | 0.92 |
+| Public Corp | 0.88 |
+| Local | 0.81 |
 
 ### Decision Framework (Table 7)
 
@@ -96,3 +107,15 @@ Where:
 | Participate | TPV > NPV×1.05 | Favorable opportunity |
 | Conditional | TPV > NPV×0.80 | Marginal value |
 | Reject | TPV ≤ NPV×0.80 OR TPV ≤ 0 | Conserve resources |
+
+---
+
+## File Structure
+
+```
+docs/wiki/
+├── Home.md                  # This page
+├── Real-Options-Theory.md   # 7 options + 3 adjustments theory
+├── 5-Level-System.md        # Input transformation hierarchy
+└── Model-Architecture.md    # System structure & calculation flow
+```
