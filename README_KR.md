@@ -1,9 +1,9 @@
-# BIM 실물옵션 가치평가 모델
+# BIM 실물옵션 가치평가 모델 (BIM-ROVS)
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**건설 BIM 설계용역 입찰 의사결정을 위한 실물옵션 기반 가치평가 프레임워크**
+**실물옵션 기반의 BIM 엔지니어링 프로젝트 입찰 참여여부 의사결정 지원 모형**
 
 > **[English README](README.md)**
 
@@ -11,55 +11,92 @@
 
 ## 개요
 
-본 모델은 건설 BIM 설계용역 입찰 시 전통적 NPV(순현재가치) 분석의 한계를 극복하고, 실물옵션 이론을 적용하여 전략적 유연성 가치를 정량화하는 평가 시스템입니다.
+공공 BIM 발주 의무화로 입찰 경쟁이 심화되면서 엔지니어링사는 제한된 인력·시간 내에서 기대 이익이 가장 큰 프로젝트를 선별해 참여할 필요가 있습니다. 그러나 기존 현금흐름할인법(DCF)은 시장 환경 변화에 따라 사업을 확장·축소·중단하는 등 경영적 유연성(Managerial Flexibility)을 발휘할 수 있는 권리의 가치를 반영하지 못해, 단기 수익성은 낮지만 장기 성장 잠재력이 큰 프로젝트가 저평가되는 문제가 있습니다.
+
+본 모델은 입찰 전 단계에서 후속 사업 참여 기회, 기술역량 축적 등 '기회 요인'을 포함해 참여 여부를 정량적으로 판단하도록 돕는 실물옵션 기반 의사결정 지원 모형입니다.
 
 ### 핵심 개념: TPV = NPV + ROV
 
 ```
-총 프로젝트 가치 (TPV) = 순현재가치 (NPV) + 실물옵션 가치 (ROV)
+총 프로젝트 가치 (TPV) = 순현재가치 (NPV) + 실물옵션 가치 (ROV)     ... Eq.(1)
+
+Where:
+  ROV = Σ(7가지 옵션) - Σ(3가지 조정요소)                          ... Eq.(2)
 ```
 
-- **NPV**: 전통적 현금흐름 할인법 기반 순현재가치
-- **ROV**: 7개 실물옵션 가치의 합계 - 3개 조정요소
+- **NPV**: 확정적 수익 - 전통적 현금흐름 할인법 기반 (Eq.12)
+- **ROV**: 기회 가치 - 7개 실물옵션 가치의 합계에서 3개 조정요소 차감
 
 ---
 
 ## 주요 기능
 
-### 3-Tier 입력 시스템
+### 5-Level 계층적 프레임워크 (Figure 1)
 
-입력 데이터의 불확실성을 체계적으로 관리하는 3단계 계층 시스템:
+입력 데이터의 불확실성을 체계적으로 관리하는 5단계 계층 시스템:
 
 ```
-Tier 0 (확정)     →  Tier 1 (파생)      →  Tier 2 (확률적)
-공고문 확정 정보      결정론적 파생          확률분포 샘플링
+Level 1        Level 2           Level 3            Level 4        Level 5
+데이터 입력 → 파라미터 매핑 →  확률 모형화   →   가치 평가  →   의사결정
 ```
 
-| Tier | 설명 | 예시 |
-|------|------|------|
-| **Tier 0** | 공고문에서 직접 추출 가능한 확정 정보 | 계약금액, 인프라유형, 설계단계, 계약기간, 조달방식, 발주처 |
-| **Tier 1** | Tier 0에서 결정론적으로 파생되는 정보 | 후속설계 여부, 복잡도 등급, 경쟁수준 파라미터, 마일스톤 수 |
-| **Tier 2** | 확률분포에서 샘플링되는 불확실 변수 | 비용비율, 후속확률, 전략적 정합성, 시장변동성 등 |
+| Level | 설명 | 구현 |
+|-------|------|------|
+| **Level 1** | 공고문 확정 변수 (6개) + 기업 특성 변수 (4개) | Tier0Input |
+| **Level 2** | 문헌 기반 규칙적 파라미터 도출 | Tier1Derivation |
+| **Level 3** | 확률분포 샘플링 (Vose 2008 기준) | Tier2Sampler |
+| **Level 4** | 몬테카를로 시뮬레이션 (5,000회) | ValuationEngine |
+| **Level 5** | 의사결정 신호 분류 (Table 7) | Decision Logic |
 
 ### 7개 실물옵션 (+)
 
-| 옵션 | 설명 | 주요 파라미터 |
-|------|------|---------------|
-| **1. 후속설계 (Follow-on)** | 후속설계(실시설계) 참여 기회 | follow_on_prob, infra_type |
-| **2. 역량축적 (Capability)** | BIM 역량 축적 및 학습효과 | capability_level, complexity |
-| **3. 자원활용 (Resource)** | 유휴 자원 활용 기회 | resource_utilization |
-| **4. 포기 (Abandonment)** | 조기 포기 및 손실 제한 | cost_ratio, strategic_alignment |
-| **5. 축소 (Contract)** | 범위 축소 유연성 | infra_type, cost_ratio |
-| **6. 전환 (Switch)** | 자원 재배치 옵션 | complexity, alternative_attractiveness |
-| **7. 단계적 투자 (Staging)** | 단계적 투자 및 정보 획득 | n_milestones, time_to_decision |
+| 옵션 | 기호 | 설명 | 이론적 근거 |
+|------|------|------|-------------|
+| **1. 후속 사업 참여** | O_exp | 선행 사업으로 획득한 정보 우위 활용 | Geske (1979) |
+| **2. 역량 축적** | O_grw | BIM 역량 축적 및 학습효과 | Argote & Epple (1990) |
+| **3. 자원 활용** | O_swi | 유휴 자원 활용으로 고정비 손실 방지 | - |
+| **4. 계약 유연성** | O_cnt | 원가 초과 시 범위 조정 | Flyvbjerg (2003) |
+| **5. 인력 전환** | O_swo | 핵심 인력의 더 나은 기회로 재배치 | - |
+| **6. 포기** | O_abn | 프로젝트 중도 타절로 손실 제한 | Triantis (2005) |
+| **7. 단계적 투자** | O_stg | 단계별 계약을 통한 리스크 관리 | Sequential Investment |
 
 ### 3개 조정요소 (−)
 
-| 조정요소 | 설명 | 이론적 근거 |
-|----------|------|-------------|
-| **상호작용 할인 (Interaction)** | 옵션 간 상호작용 할인 | Trigeorgis (1993) |
-| **리스크 프리미엄 (Risk Premium)** | 변동성 및 복잡도 연동 리스크 | Borison (2005) |
-| **연기비용 (Deferral Cost)** | 연기옵션의 기회비용 | Dixit & Pindyck (1994) |
+| 조정요소 | 기호 | 설명 | 이론적 근거 |
+|----------|------|------|-------------|
+| **상호작용 할인** | I_int | 옵션 중복 효과 할인 (γ ∈ [0.08, 0.30]) | Trigeorgis (1993) |
+| **리스크 프리미엄** | P_risk | ρ = 0.15 + σ×0.30 + κ×0.10 | Borison (2005) |
+| **이연 비용** | C_wait | 대기 옵션 포기의 기회비용 | Dixit & Pindyck (1994) |
+
+---
+
+## 핵심 파라미터 (문헌 기반)
+
+### 인프라 유형별 파라미터 (Flyvbjerg et al. 2003)
+
+| 파라미터 | 도로 | 교량 | 터널 | 출처 |
+|----------|------|------|------|------|
+| 기본 복잡도 (κ₀) | 0.60 | 0.85 | 1.00 | 비용초과율 정규화 |
+| 설계 유연성 (f_scope) | 1.00 | 0.65 | 0.48 | Eq.(4) |
+| 기본 변동성 (σ₀) | 0.22 | 0.35 | 0.42 | Eq.(5) |
+| 설계 검토 횟수 (n) | 3 | 4 | 4 | MOLIT (2024) |
+| 후속사업 배수 (m_f) | 1.67 | 1.84 | 1.84 | MOTIE (2024) |
+
+### 발주 방식별 경쟁 파라미터 (KENCA 2023)
+
+| 발주 방식 | 평균 (μ_c) | 표준편차 (σ_c) |
+|-----------|------------|----------------|
+| 일반경쟁 | 0.72 | 0.14 |
+| 제한경쟁 | 0.48 | 0.10 |
+| 지명경쟁 | 0.21 | 0.04 |
+
+### 발주처 신뢰도 (KENCA 2023)
+
+| 발주처 유형 | 신뢰도 (φ_c) |
+|-------------|--------------|
+| 중앙정부 | 0.92 |
+| 공기업 | 0.88 |
+| 지자체 | 0.81 |
 
 ---
 
@@ -74,8 +111,8 @@ Tier 0 (확정)     →  Tier 1 (파생)      →  Tier 2 (확률적)
 
 ```bash
 # 저장소 복제
-git clone https://github.com/ehxhf789789/01_Real_Options-Based_Bid_Decision_Support_Framework.git
-cd 01_Real_Options-Based_Bid_Decision_Support_Framework
+git clone https://github.com/ehxhf789789/R01_Real_Options.git
+cd R01_Real_Options
 
 # 의존성 설치
 pip install -r requirements.txt
@@ -107,27 +144,43 @@ print(results[['project_id', 'npv', 'tpv', 'rov_net', 'decision_changed']])
 
 ### 방법 2: 포터블 실행파일 (Windows)
 
-[Releases](https://github.com/ehxhf789789/01_Real_Options-Based_Bid_Decision_Support_Framework/releases) 페이지에서 `BIM_ROV_System.exe`를 다운로드하세요.
+[Releases](https://github.com/ehxhf789789/R01_Real_Options/releases) 페이지에서 `BIM_ROV_System.exe`를 다운로드하세요.
 
 ---
 
 ## 입력 데이터 형식
 
-필수 컬럼이 포함된 CSV 파일:
+### 입찰 공고 변수 (6개) - Table 8
 
 | 컬럼 | 타입 | 설명 | 예시 |
 |------|------|------|------|
-| project_id | str | 프로젝트 ID | R01 |
+| project_id | str | 프로젝트 ID | P001 |
 | contract_amount | float | 계약금액 (백만원) | 520 |
 | infra_type | str | 인프라 유형 | Road, Bridge, Tunnel |
 | design_phase | str | 설계 단계 | 기본설계, 실시설계 |
 | contract_duration | float | 계약 기간 (년) | 1.5 |
-| procurement_type | str | 조달 방식 | 일반경쟁, 제한경쟁, 지명경쟁 |
+| procurement_type | str | 발주 방식 | 일반경쟁, 제한경쟁, 지명경쟁 |
 | client_type | str | 발주처 유형 | 중앙, 지방, 공기업 |
+
+### 기업 특성 변수 (4개) - Table 4
+
+| 컬럼 | 타입 | 설명 | 예시 |
+|------|------|------|------|
 | firm_size | str | 기업 규모 | Large, Medium, Small |
-| bim_years | int | BIM 경력 (년) | 5 |
+| bim_years | int | BIM 도입 연차 | 5 |
 | same_type_count | int | 동일 유형 실적 (최근 5년) | 8 |
-| current_utilization | float | 현재 자원 가동률 | 0.65 |
+| current_utilization | float | 현재 가동률 | 0.65 |
+
+---
+
+## 의사결정 프레임워크 (Table 7)
+
+| 의사결정 | 조건 | 해석 |
+|----------|------|------|
+| **적극 참여** | TPV > NPV×1.5 AND TPV > 300M | 높은 전략적 가치 |
+| **참여** | TPV > NPV×1.05 | 유리한 기회 |
+| **조건부** | TPV > NPV×0.80 | 한계적 가치 |
+| **기각** | TPV ≤ NPV×0.80 OR TPV ≤ 0 | 자원 보존 |
 
 ---
 
@@ -143,8 +196,8 @@ R01_Real_Options/
 │
 ├── src/                      # 핵심 소스 코드
 │   ├── __init__.py
-│   ├── valuation_engine.py   # 메인 평가 엔진
-│   └── tier_system.py        # 3-Tier 입력 시스템
+│   ├── valuation_engine.py   # 메인 평가 엔진 (Level 4-5)
+│   └── tier_system.py        # 5-Level 입력 시스템 (Level 1-3)
 │
 ├── data/
 │   └── sample_projects.csv   # 샘플 프로젝트 데이터
@@ -154,78 +207,46 @@ R01_Real_Options/
 │   ├── Figure_4-2_ROV_Decomposition.png
 │   └── Figure_4-3_Sensitivity_Tornado.png
 │
+├── docs/                     # 문서
+│   └── wiki/                 # GitHub Wiki 콘텐츠
+│       ├── Real-Options-Theory.md
+│       ├── Model-Architecture.md
+│       └── 3-Tier-System.md
+│
 ├── scripts/                  # 유틸리티 스크립트
 │   └── generate_figures.py
 │
-├── tests/                    # 테스트 코드
-│   └── test_valuation.py
-│
-└── docs/                     # 추가 문서
-    └── DEVELOPMENT_LOG.md
+└── tests/                    # 테스트 코드
+    └── test_valuation.py
 ```
-
----
-
-## 모델 아키텍처
-
-### ROV 계산 흐름
-
-```
-ROV Gross = Σ(7개 옵션)
-    ↓
-- 상호작용 할인 (8~22%)
-    ↓
-ROV Adjusted
-    ↓
-- 리스크 프리미엄 (10~25%)
-- 연기비용
-    ↓
-ROV Net (상한: 0.80 × |NPV|)
-```
-
-### 몬테카를로 시뮬레이션
-
-- **반복 횟수**: 5,000회 시뮬레이션
-- **샘플링**: 매 반복마다 Tier 2 분포에서 독립 샘플링
-- **출력**: TPV 분포, 의사결정 확률, 신뢰구간
-
-### 의사결정 프레임워크
-
-| 의사결정 | 조건 |
-|----------|------|
-| **적극 참여 (Strong Participate)** | TPV > NPV×1.5 AND TPV > 30M |
-| **참여 (Participate)** | NPV×1.05 < TPV ≤ NPV×1.5 |
-| **조건부 (Conditional)** | NPV×0.80 < TPV ≤ NPV×1.05 |
-| **기각 (Reject)** | TPV ≤ NPV×0.80 OR TPV ≤ 0 |
 
 ---
 
 ## 시각화 예시
 
-### Figure 4-1: NPV vs TPV 비교
+### Figure 4: NPV vs TPV 비교
 ![NPV vs TPV](figures/Figure_4-1_NPV_TPV_Comparison.png)
 
-10개 프로젝트의 NPV와 TPV를 비교하여 실물옵션 가치의 영향을 시각화합니다. Decision Change 프로젝트(NPV<0, TPV>0)는 점선으로 하이라이트됩니다.
-
-### Figure 4-2: ROV 분해
+### Figure 5: ROV 분해 (Waterfall)
 ![ROV Decomposition](figures/Figure_4-2_ROV_Decomposition.png)
 
-각 프로젝트별 7개 옵션 구성비와 3개 조정요소를 Stacked Bar + Waterfall 차트로 표현합니다.
-
-### Figure 4-3: 민감도 분석
+### Figure 6: 민감도 토네이도 다이어그램
 ![Sensitivity Tornado](figures/Figure_4-3_Sensitivity_Tornado.png)
-
-주요 파라미터의 ±20% 변동이 TPV에 미치는 영향을 토네이도 차트로 표현합니다.
 
 ---
 
 ## 참고문헌
 
-- Trigeorgis, L. (1993). Real Options and Interactions with Financial Flexibility
-- Dixit, A. K., & Pindyck, R. S. (1994). Investment under Uncertainty
-- Borison, A. (2005). Real Options Analysis: Where Are the Emperor's Clothes?
-- Argote, L., & Epple, D. (1990). Learning Curves in Manufacturing
-- 조달청 (2023). 건설용역 발주 현황 통계
+1. Trigeorgis, L. (1993). The nature of option interactions. JFQA.
+2. Dixit, A. K., & Pindyck, R. S. (1994). Investment under Uncertainty. Princeton.
+3. Copeland, T., & Antikarov, V. (2001). Real options: A practitioner's guide.
+4. Borison, A. (2005). Real Options Analysis. JACF.
+5. Flyvbjerg, B., et al. (2003). Cost overruns in transport projects. Transport Reviews.
+6. Geske, R. (1979). The Valuation of Compound Options. JFE.
+7. Argote, L., & Epple, D. (1990). Learning Curves in Manufacturing. Science.
+8. Jofre-Bonet, M., & Pesendorfer, M. (2003). Estimation of a dynamic auction game. Econometrica.
+9. 한국엔지니어링협회 (2023). 엔지니어링산업 실태조사.
+10. 산업통상자원부 (2024). 엔지니어링사업 대가기준.
 
 ---
 
@@ -237,7 +258,29 @@ ROV Net (상한: 0.80 × |NPV|)
 
 ## 저자
 
-**이한빈 (Hanbin Lee)**
+**이한빈 (Han-Bin Lee)** - 과학기술연합대학원대학교 (UST) 건설환경공학
+- Email: ehxhf789@kict.re.kr
+- 소속: 한국건설기술연구원 (KICT)
+
+**문현석 (Hyoun-Seok Moon)** (교신저자)
+- Email: hsmoon@kict.re.kr
+- 소속: KICT / UST
+
+---
+
+## 인용
+
+본 연구를 인용하실 경우:
+
+```bibtex
+@article{lee2025bim_rov,
+  author = {이한빈 and 문현석},
+  title = {실물옵션 기반의 BIM 엔지니어링 프로젝트 입찰 참여여부 의사결정 지원 모형},
+  journal = {한국건축시공학회지},
+  year = {2025},
+  note = {심사중}
+}
+```
 
 ---
 
@@ -250,18 +293,3 @@ ROV Net (상한: 0.80 × |NPV|)
 3. 변경사항 커밋 (`git commit -m 'Add some AmazingFeature'`)
 4. 브랜치에 Push (`git push origin feature/AmazingFeature`)
 5. Pull Request 생성
-
----
-
-## 인용
-
-본 연구를 인용하실 경우 다음을 참조해 주세요:
-
-```bibtex
-@software{lee2024bim_rov,
-  author = {Lee, Hanbin},
-  title = {BIM Real Options Valuation Model},
-  year = {2024},
-  url = {https://github.com/ehxhf789789/01_Real_Options-Based_Bid_Decision_Support_Framework}
-}
-```
