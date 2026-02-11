@@ -12,12 +12,15 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-# Path setup for frozen exe
+# Import engine modules BEFORE sys.path manipulation (for PyInstaller bundling)
+from valuation_engine import ValuationEngine
+from tier_system import Tier0Input, Tier1Derivation, Tier2Sampler
+
+# Path setup for frozen exe (for data files, not module imports)
 if getattr(sys, 'frozen', False):
     BASE_DIR = os.path.dirname(sys.executable)
 else:
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, BASE_DIR)
 
 import customtkinter as ctk
 from tkinter import filedialog, messagebox, ttk
@@ -30,10 +33,6 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 import matplotlib.patches as mpatches
-
-# Import engine modules
-from valuation_engine import ValuationEngine
-from tier_system import Tier0Input, Tier1Derivation, Tier2Sampler
 
 # Set appearance
 ctk.set_appearance_mode("light")
