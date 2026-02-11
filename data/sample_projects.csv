@@ -1,0 +1,11 @@
+project_id,contract_amount,infra_type,design_phase,contract_duration,procurement_type,client_type,firm_size,bim_years,same_type_count,current_utilization
+R01,520,Road,기본설계,2.5,일반경쟁,중앙,Large,7,12,0.65
+R02,180,Road,실시설계,1.0,제한경쟁,지방,Small,2,3,0.85
+R03,280,Road,기본설계,2.0,제한경쟁,공기업,Medium,5,8,0.70
+R04,450,Bridge,기본설계,2.5,일반경쟁,중앙,Large,6,5,0.60
+R05,120,Bridge,실시설계,1.5,지명경쟁,지방,Small,3,2,0.90
+R06,95,Bridge,실시설계,1.0,지명경쟁,지방,Small,2,1,0.88
+R07,680,Tunnel,기본설계,3.0,일반경쟁,중앙,Large,8,6,0.55
+R08,220,Tunnel,실시설계,2.0,제한경쟁,공기업,Medium,4,4,0.75
+R09,850,Tunnel,기본설계,3.5,일반경쟁,중앙,Large,9,8,0.58
+R10,320,Tunnel,실시설계,2.5,제한경쟁,공기업,Medium,5,5,0.72

@@ -11,7 +11,8 @@ from dataclasses import dataclass
 
 @dataclass
 class Tier0Input:
-    """공고문에서 확정적으로 추출 가능한 입력"""
+    """공고문에서 확정적으로 추출 가능한 입력 (10개 변수)"""
+    # 입찰 공고 변수 (6개)
     project_id: str
     contract_amount: float      # 백만원
     infra_type: str             # Road, Bridge, Tunnel
@@ -19,6 +20,12 @@ class Tier0Input:
     contract_duration: float    # 년
     procurement_type: str       # 일반경쟁, 제한경쟁, 지명경쟁
     client_type: str            # 중앙, 지방, 공기업
+
+    # 기업 특성 변수 (4개) - 필수 입력
+    firm_size: str              # Large, Medium, Small
+    bim_years: int              # BIM 도입 연차 (년)
+    same_type_count: int        # 최근 5년 동일 유형 실적 (건수)
+    current_utilization: float  # 현재 가동률 (0.0-1.0)
 
 
 class Tier1Derivation:
@@ -91,7 +98,33 @@ class Tier1Derivation:
         }
         client_reliability = client_reliability_map.get(tier0.client_type, 0.7)
 
+        # === 기업 특성 변수 파라미터 변환 (4개) ===
+
+        # 8. 기업 규모 → 기본 원가율 (KENCA 2023)
+        cost_ratio_base = {
+            'Large': 0.87,   # 대기업: 영업이익률 13.2% → 원가율 86.8%
+            'Medium': 0.92,  # 중견기업: 영업이익률 7.8% → 원가율 92.2%
+            'Small': 0.97,   # 소기업: 영업이익률 2.9% → 원가율 97.1%
+        }.get(tier0.firm_size, 0.92)
+
+        # 9. BIM 도입 연차 → BIM 숙련도 (Lee & Yu 2020 학습곡선)
+        # L = L_max * ln(1+Y) / ln(1+Y_sat), Y_sat=10년
+        if tier0.bim_years >= 10:
+            bim_expertise = 1.0
+        else:
+            bim_expertise = np.log(1 + tier0.bim_years) / np.log(1 + 10)
+
+        # 10. 동일 유형 실적 → 전략적 적합성 (0.40-0.95 범위)
+        # N_ref=10건 기준, 초과 시 0.95 수렴
+        N = tier0.same_type_count
+        N_ref = 10
+        strategic_fit = 0.40 + (0.95 - 0.40) * min(N, N_ref) / N_ref
+
+        # 11. 현재 가동률 → 유휴 자원 비율
+        idle_resource_ratio = 1.0 - tier0.current_utilization
+
         return {
+            # 프로젝트 특성
             'has_follow_on': has_follow_on,
             'follow_on_mult_range': follow_on_mult_range,
             'complexity': complexity_base,
@@ -99,10 +132,17 @@ class Tier1Derivation:
             'n_milestones': n_milestones,
             'follow_on_beta_params': follow_on_beta_params,
             'client_reliability': client_reliability,
-            'time_to_decision': tier0.contract_duration,  # 그대로 전달
-            'infra_type': tier0.infra_type,  # 전달
-            'contract_amount': tier0.contract_amount,  # cost_ratio 조정에 사용
-            'design_phase': tier0.design_phase,  # cost_ratio 조정에 사용
+            'time_to_decision': tier0.contract_duration,
+            'infra_type': tier0.infra_type,
+            'contract_amount': tier0.contract_amount,
+            'design_phase': tier0.design_phase,
+
+            # 기업 특성 (필수 입력 기반)
+            'cost_ratio_base': cost_ratio_base,
+            'bim_expertise': bim_expertise,
+            'strategic_fit': strategic_fit,
+            'idle_resource_ratio': idle_resource_ratio,
+            'firm_size': tier0.firm_size,  # 전달
         }
 
 
@@ -147,34 +187,24 @@ class Tier2Sampler:
 
         sampled = {}
 
-        # 1. 비용 비율 (현실적 경쟁 환경 반영)
-        # 기본 분포: 규모와 경쟁 강도에 따라 조정
-        contract = tier1.get('contract_amount', 200)
+        # 1. 비용 비율 (기업 규모 기반 + 경쟁 조정)
+        # Tier1에서 계산된 기본 원가율 사용
+        cost_ratio_base = tier1.get('cost_ratio_base', 0.92)
         competition = tier1.get('competition_level', 0.5)
         design_phase = tier1.get('design_phase', '기본설계')
 
-        # 규모에 따른 효율성 (대규모일수록 낮은 비용비율)
-        if contract >= 500:
-            base_mode = 0.80  # 대규모 프로젝트는 효율적
-        elif contract >= 300:
-            base_mode = 0.85
-        elif contract >= 150:
-            base_mode = 0.90
-        else:
-            base_mode = 0.95  # 소규모는 비효율적
-
         # 경쟁 강도에 따른 조정 (경쟁 높으면 저가 입찰 → 비용비율 상승)
-        competition_penalty = competition * 0.15  # 최대 +0.15
-        adjusted_mode = base_mode + competition_penalty
+        competition_penalty = competition * 0.12  # 최대 +0.12
+        adjusted_mode = cost_ratio_base + competition_penalty
 
         # 실시설계/Detailed Design는 단순 작업으로 경쟁 더 심화
         if '실시' in design_phase or 'Detailed' in design_phase:
             adjusted_mode += 0.05
 
-        # 삼각분포 파라미터 설정
-        spread = 0.12  # ±12% 변동
-        adjusted_left = max(0.70, adjusted_mode - spread)
-        adjusted_right = min(1.15, adjusted_mode + spread)  # 1.15까지 허용 (적자 가능)
+        # 삼각분포 파라미터 설정 (기업 특성 반영)
+        spread = 0.08  # ±8% 변동 (기업 규모별 차이 반영)
+        adjusted_left = max(0.75, adjusted_mode - spread)
+        adjusted_right = min(1.10, adjusted_mode + spread)  # 1.10까지 허용
 
         sampled['cost_ratio'] = np.random.triangular(adjusted_left, adjusted_mode, adjusted_right)
 
@@ -190,9 +220,12 @@ class Tier2Sampler:
             sampled['follow_on_prob'] = 0.0
             sampled['follow_on_multiplier'] = 0.0
 
-        # 3. 전략적 정합성
-        dist = cls.DISTRIBUTIONS['strategic_alignment']['params']
-        sampled['strategic_alignment'] = np.random.uniform(dist['low'], dist['high'])
+        # 3. 전략적 정합성 (Tier1 입력 기반 + 변동)
+        strategic_fit_base = tier1.get('strategic_fit', 0.6)
+        # ±10% 변동
+        sampled['strategic_alignment'] = np.clip(
+            strategic_fit_base + np.random.uniform(-0.10, 0.10), 0.3, 0.95
+        )
 
         # 4. 대안 매력도
         dist = cls.DISTRIBUTIONS['alternative_attractiveness']['params']
@@ -206,13 +239,21 @@ class Tier2Sampler:
             np.log(dist['mean']), dist['sigma']
         )
 
-        # 6. BIM 역량 수준
-        dist = cls.DISTRIBUTIONS['capability_level']['params']
-        sampled['capability_level'] = np.random.uniform(dist['low'], dist['high'])
+        # 6. BIM 역량 수준 (Tier1 입력 기반)
+        bim_expertise_base = tier1.get('bim_expertise', 0.7)
+        # ±5% 변동
+        sampled['capability_level'] = np.clip(
+            bim_expertise_base + np.random.uniform(-0.05, 0.05), 0.5, 1.0
+        )
 
-        # 7. 자원 활용률
-        dist = cls.DISTRIBUTIONS['resource_utilization']['params']
-        sampled['resource_utilization'] = np.random.uniform(dist['low'], dist['high'])
+        # 7. 자원 활용률 (Tier1 입력 기반)
+        idle_ratio = tier1.get('idle_resource_ratio', 0.3)
+        # 현재 가동률 = 1 - idle_ratio
+        current_util = 1.0 - idle_ratio
+        # ±5% 변동
+        sampled['resource_utilization'] = np.clip(
+            current_util + np.random.uniform(-0.05, 0.05), 0.5, 0.95
+        )
 
         # 8. 잔존가치 회수율
         dist = cls.DISTRIBUTIONS['recovery_rate']['params']

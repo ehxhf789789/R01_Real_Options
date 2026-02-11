@@ -29,10 +29,13 @@ env/
 .vscode/
 *.swp
 *.swo
+*.sublime-project
+*.sublime-workspace
 
 # OS
 .DS_Store
 Thumbs.db
+Desktop.ini
 nul
 
 # Jupyter
@@ -42,15 +45,19 @@ nul
 .pytest_cache/
 .coverage
 htmlcov/
+.tox/
+.nox/
 
-# Distribution
+# Distribution / Build
 *.spec
+dist/
+*.exe
 
 # Build artifacts - PyInstaller extracted files
 BIM_ROV_System_v15.exe_extracted/
 pyinstxtractor.py
 
-# Claude Code settings (local)
+# Claude Code
 .claude/
 
 # Personal validation data (contains sensitive information)
@@ -58,3 +65,19 @@ pyinstxtractor.py
 
 # Archive folder (local development artifacts)
 _archive/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Results (regeneratable)
+results_*.csv
+
+# Environment variables
+.env
+.env.local
